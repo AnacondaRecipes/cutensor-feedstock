@@ -26,7 +26,7 @@ source:
 
 build:
   number: 0
-  skip: true  # [win32 or osx or cuda_compiler_version not in ("11.8", "12.0") or (linux and s390x)]
+  skip: true  # [win32 or osx or (linux and s390x)]
   script:
     - mkdir -p $PREFIX/include                                             # [linux]
     - mv include/* $PREFIX/include/                                        # [linux]
@@ -57,7 +57,9 @@ requirements:
     - sysroot_{{ target_platform }} {{ conda_glibc_ver }}.*    # [linux]
   host:
     - patchelf >=0.12  # [linux]
-    - cuda-version {{ cuda_major }}.0
+    # Note that this is now usable with all cuda 12.x (see run pinning), so doesn't need to be
+    # rebuilt with a cuda update
+    - cuda-version {{ cuda_major }}.4
     - libcublas  # [(cuda_compiler_version or "").startswith("12")]
   run:
     - {{ pin_compatible("cuda-version", max_pin="x") }}
