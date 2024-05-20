@@ -26,7 +26,7 @@ source:
 
 build:
   number: 0
-  skip: true  # [win32 or osx or cuda_compiler_version not in ("11.8", "12.0")]
+  skip: true  # [win32 or osx or (linux and s390x)]
   script:
     - mkdir -p $PREFIX/include                                             # [linux]
     - mv include/* $PREFIX/include/                                        # [linux]
@@ -53,11 +53,13 @@ requirements:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - {{ compiler('cuda') }}
-    - arm-variant * {{ arm_variant_type }}  # [aarch64]
-    - sysroot_{{ target_platform }} 2.17    # [linux]
+    #- arm-variant * {{ arm_variant_type }}  # [aarch64]
+    - sysroot_{{ target_platform }} {{ conda_glibc_ver }}.*    # [linux]
   host:
     - patchelf >=0.12  # [linux]
-    - cuda-version {{ cuda_major }}.0
+    # Note that this is now usable with all cuda 12.x (see run pinning), so doesn't need to be
+    # rebuilt with a cuda update
+    - cuda-version {{ cuda_major }}.4
     - libcublas  # [(cuda_compiler_version or "").startswith("12")]
   run:
     - {{ pin_compatible("cuda-version", max_pin="x") }}
@@ -65,16 +67,16 @@ requirements:
     - libcublas               # [(cuda_compiler_version or "").startswith("12")]
   run_constrained:
     # Only GLIBC_2.17 or older symbols present
-    - __glibc >=2.17      # [linux]
+    - __glibc >={{ conda_glibc_ver }}      # [linux]
     - arm-variant * {{ arm_variant_type }}  # [aarch64]
 
 test:
   requires:
-    - git
+    - git                      # [not win]
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - {{ compiler('cuda') }}
-    - sysroot_{{ target_platform }} 2.17  # [linux]
+    - sysroot_{{ target_platform }} {{ conda_glibc_ver }}.*  # [linux]
     # make sure we pick up the version matching the docker,
     # or the linker would complain 
     - cudatoolkit {{ cuda_compiler_version }}  # [(cuda_compiler_version or "").startswith("11")]

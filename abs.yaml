@@ -1,0 +1,6 @@
+# Turn off the overlinking check, because it gives a false positive on Windows.
+# See https://github.com/conda/conda-build/issues/3650
+# We can't turn the check off for just Windows.
+build_parameters:
+  - "--suppress-variables"
+  - "--skip-existing"
