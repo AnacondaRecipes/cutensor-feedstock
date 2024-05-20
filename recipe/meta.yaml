@@ -72,7 +72,7 @@ requirements:
 
 test:
   requires:
-    - git
+    - git                      # [not win]
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - {{ compiler('cuda') }}
