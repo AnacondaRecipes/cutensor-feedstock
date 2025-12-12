@@ -1,10 +1,6 @@
 {% set version = "2.4.1.4" %}
 
-{% if cuda_compiler_version in (None, "None", True, False) %}
-{% set cuda_major = 0 %}
-{% else %}
-{% set cuda_major = environ.get("cuda_compiler_version", "12.0").split(".")[0] | int %}
-{% endif %}
+{% set cuda_major = cuda_compiler_version.split(".")[0]|int %}
 
 {% set platform = "linux-x86_64" %}  # [linux64]
 {% set platform = "linux-ppc64le" %}  # [ppc64le]
@@ -25,12 +21,17 @@ package:
   version: {{ version }}
 
 source:
-  url: https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/{{ platform }}/libcutensor-{{ platform }}-{{ version }}_cuda{{ cuda_major }}-archive.{{ extension }}
-  sha256: {{ sha|default("") }}
+  - url: https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/{{ platform }}/libcutensor-{{ platform }}-{{ version }}_cuda{{ cuda_major }}-archive.{{ extension }}
+    sha256: {{ sha|default("") }}
+  # Delegate git-clone from test scripts to the recipe
+  - git_url: https://github.com/NVIDIA/CUDALibrarySamples.git
+    # Update the commit hash on version bump
+    git_rev: 6a52c1608812ac1177efd2a4774b5a0a27f32c5e
+    folder: sample_linux
 
 build:
   number: 0
-  skip: true  # [ppc64le or cuda_compiler_version in (undefined, "None")]
+  skip: true  # [osx]
   run_exports:
     - {{ pin_subpackage('cutensor') }}
   ignore_run_exports_from:
@@ -51,16 +52,15 @@ requirements:
     - cf-nvidia-tools 1                     # [linux]
   host:
     - cuda-version {{ cuda_compiler_version }}
-    - libcublas
+    - libcublas {{ libcublas }}
   run:
     - {{ pin_compatible("cuda-version", min_pin="x", max_pin="x") }}
-    - libcublas
+    - libcublas {{ libcublas }}
   run_constrained:
     - arm-variant * {{ arm_variant_type }}  # [aarch64]
 
 test:
   requires:
-    - git                      # [not win]
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - {{ compiler('cuda') }}
@@ -91,6 +91,8 @@ about:
   dev_url: https://developer.nvidia.com/cutensor/downloads
 
 extra:
+  skip-lints:
+    - license_file_overspecified
   recipe-maintainers:
     - ChrisPsa
     - b-kloss
