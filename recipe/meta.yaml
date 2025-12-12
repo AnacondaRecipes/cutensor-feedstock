@@ -1,9 +1,9 @@
-{% set version = "2.0.1.2" %}
+{% set version = "2.4.1.4" %}
 
 {% if cuda_compiler_version in (None, "None", True, False) %}
 {% set cuda_major = 0 %}
 {% else %}
-{% set cuda_major = environ.get("cuda_compiler_version", "11.2").split(".")[0] | int %}
+{% set cuda_major = environ.get("cuda_compiler_version", "12.0").split(".")[0] | int %}
 {% endif %}
 
 {% set platform = "linux-x86_64" %}  # [linux64]
@@ -13,61 +13,49 @@
 {% set extension = "tar.xz" %}  # [not win]
 {% set extension = "zip" %}  # [win]
 
+{% set sha = "032904fb8bba341e24aa45a8cc7b5afc63e4c28e22474530ccc97cfa546d0442" %}  # [linux64 and (cuda_compiler_version or "").startswith("12")]
+{% set sha = "afcf1bd3a50b729bcd5d1ddb0a3e90ca2631d7048d51bdeafe49c650e162ebc1" %}  # [aarch64 and (cuda_compiler_version or "").startswith("12")]
+{% set sha = "39c12490cbe8b30fa5acd200913b66bea960487f3e4d61d5591d448fa5144c95" %}  # [win64 and (cuda_compiler_version or "").startswith("12")]
+{% set sha = "21fb0a9a3b7b6663223667b587f2ab1c54e4a61c975fea0f9d4f56d9c33f31fe" %}  # [linux64 and (cuda_compiler_version or "").startswith("13")]
+{% set sha = "9baffd3658b7f4da2d2f94d23c3acddb6d12c62997d3da39a774a058fef04aa5" %}  # [aarch64 and (cuda_compiler_version or "").startswith("13")]
+{% set sha = "cec7dec9670974523cb8ea3a8e893a646b65eca61ad5ca432e89b95542933902" %}  # [win64 and (cuda_compiler_version or "").startswith("13")]
+
 package:
   name: cutensor
   version: {{ version }}
 
 source:
-  url: https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/{{ platform }}/libcutensor-{{ platform }}-{{ version }}-archive.{{ extension }}
-  sha256: ededa12ca622baad706ea0a500a358ea51146535466afabd96e558265dc586a2  # [linux64]
-  sha256: 7176083a4dad44cb0176771be6efb3775748ad30a39292bf7b4584510f1dd811  # [ppc64le]
-  sha256: 4214a0f7b44747c738f2b643be06b2b24826bd1bae6af27f29f3c6dec131bdeb  # [aarch64]
-  sha256: 6ba9e03ee76dd0a5ace281ce703baf1175e0884b535924c3af88206d8951e33b  # [win64]
+  url: https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/{{ platform }}/libcutensor-{{ platform }}-{{ version }}_cuda{{ cuda_major }}-archive.{{ extension }}
+  sha256: {{ sha|default("") }}
 
 build:
   number: 0
-  skip: true  # [win32 or osx or (linux and s390x)]
-  script:
-    - mkdir -p $PREFIX/include                                             # [linux]
-    - mv include/* $PREFIX/include/                                        # [linux]
-    - mkdir -p $PREFIX/lib                                                 # [linux]
-    - mv lib/{{ cuda_major }}/*.so* $PREFIX/lib/                           # [linux]
-
-    - copy include\\cutensor.h %LIBRARY_INC%\\                             # [win64]
-    - copy include\\cutensorMg.h %LIBRARY_INC%\\                           # [win64]
-    - mkdir %LIBRARY_INC%\\cutensor                                        # [win64]
-    - copy include\\cutensor\\types.h %LIBRARY_INC%\\cutensor              # [win64]
-    - del lib\\{{ cuda_major }}\\*static*                                  # [win64]
-    - copy lib\\{{ cuda_major }}\\*.dll %LIBRARY_BIN%\\                    # [win64]
-    - copy lib\\{{ cuda_major }}\\*.lib %LIBRARY_LIB%\\                    # [win64]
+  skip: true  # [ppc64le or cuda_compiler_version in (undefined, "None")]
   run_exports:
     - {{ pin_subpackage('cutensor') }}
-  ignore_run_exports:
-    - cudatoolkit  # [(cuda_compiler_version or "").startswith("11")]
+  ignore_run_exports_from:
+    - {{ compiler('cuda') }}
   missing_dso_whitelist:
     - "*/libcuda.so.*"    # [linux]
     - "*/nvcuda.dll"      # [win]
+  script_env:
+    - cuda_major={{ cuda_major }}
 
 requirements:
   build:
     - {{ compiler('c') }}
+    - {{ stdlib("c") }}
     - {{ compiler('cxx') }}
     - {{ compiler('cuda') }}
-    #- arm-variant * {{ arm_variant_type }}  # [aarch64]
-    - sysroot_{{ target_platform }} {{ conda_glibc_ver }}.*    # [linux]
+    - arm-variant * {{ arm_variant_type }}  # [aarch64]
+    - cf-nvidia-tools 1                     # [linux]
   host:
-    - patchelf >=0.12  # [linux]
-    # Note that this is now usable with all cuda 12.x (see run pinning), so doesn't need to be
-    # rebuilt with a cuda update
-    - cuda-version {{ cuda_major }}.4
-    - libcublas  # [(cuda_compiler_version or "").startswith("12")]
+    - cuda-version {{ cuda_compiler_version }}
+    - libcublas
   run:
-    - {{ pin_compatible("cuda-version", max_pin="x") }}
-    - cudatoolkit >=11.1,<12  # [(cuda_compiler_version or "").startswith("11")]
-    - libcublas               # [(cuda_compiler_version or "").startswith("12")]
+    - {{ pin_compatible("cuda-version", min_pin="x", max_pin="x") }}
+    - libcublas
   run_constrained:
-    # Only GLIBC_2.17 or older symbols present
-    - __glibc >={{ conda_glibc_ver }}      # [linux]
     - arm-variant * {{ arm_variant_type }}  # [aarch64]
 
 test:
@@ -76,14 +64,11 @@ test:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
     - {{ compiler('cuda') }}
-    - sysroot_{{ target_platform }} {{ conda_glibc_ver }}.*  # [linux]
-    # make sure we pick up the version matching the docker,
-    # or the linker would complain 
-    - cudatoolkit {{ cuda_compiler_version }}  # [(cuda_compiler_version or "").startswith("11")]
+    - {{ stdlib('c') }}
     # need the libcuda stub for import test
-    - cuda-driver-dev                          # [linux and (cuda_compiler_version or "").startswith("12")]
+    - cuda-driver-dev  # [linux]
   files:
-    - test_load_elf.c        # [linux]
+    - test_load_elf.c  # [linux]
 
 about:
   home: https://developer.nvidia.com/cutensor
@@ -107,6 +92,10 @@ about:
 
 extra:
   recipe-maintainers:
+    - ChrisPsa
+    - b-kloss
+    - conda-forge/cuda
+    - v0i0
     - yangcal
     - JeremyWangNVDA
     - leofang
