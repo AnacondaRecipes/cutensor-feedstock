@@ -1,7 +1,4 @@
 anaconda_config_version: 1
 upstream_sources:
-  # NVIDIA redist directory (libcutensor archive names), not PyPI and not CUDALibrarySamples tags.
-  # Matches aggregate-duct-tape ``NVCHECKER_OVERRIDE_GITHUB_TO_REGEX`` / distro-db ``github->webpage(regex)``.
-  - webpage:
-      url: https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/linux-x86_64/
-      regex: 'libcutensor-linux-x86_64-([\d.]+)(?:_cuda\d+)?-archive\.tar\.xz'
+  - git:
+      identifier: https://github.com/NVIDIA/CUDALibrarySamples.git
