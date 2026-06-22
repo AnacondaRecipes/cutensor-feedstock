@@ -1,10 +1,9 @@
-# This is required for the recipe to build on aarch64
 arm_variant_type: # [aarch64]
   - sbsa          # [aarch64]
 
-# Use latest CUDA 12.x and 13.x
+# Use compatible CUDA versions; see ".ci_support" for more details
 cuda_compiler_version:
-  - 12.8
+  - 12.9
   - 13.0
 
 # Use compatible libcublas versions for each CUDA version

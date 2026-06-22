@@ -15,7 +15,9 @@ LD_PRELOAD="$CUDA_STUB" ./test_load_elf $PREFIX/lib/libcutensor.so
 LD_PRELOAD="$CUDA_STUB" ./test_load_elf $PREFIX/lib/libcutensorMg.so
 
 NVCC_FLAGS=""
-# Workaround __ieee128 error; see https://github.com/LLNL/blt/issues/341
-if [[ $target_platform == linux-ppc64le && $cuda_compiler_version == 10.* ]]; then
-    NVCC_FLAGS+=" -Xcompiler -mno-float128"
-fi
+
+cd sample_linux/cuTENSOR/
+nvcc $NVCC_FLAGS --std=c++17 -I$PREFIX/include -L$PREFIX/lib -lcutensor -lcudart contraction.cu -o contraction
+nvcc $NVCC_FLAGS --std=c++17 -I$PREFIX/include -L$PREFIX/lib -lcutensor -lcudart reduction.cu -o reduction
+cd ../cuTENSORMg/
+nvcc $NVCC_FLAGS --std=c++17 -I$PREFIX/include -L$PREFIX/lib -lcutensorMg -lcutensor -lcudart contraction_multi_gpu.cu -o contraction_multi_gpu
