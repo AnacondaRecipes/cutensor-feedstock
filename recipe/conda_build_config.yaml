@@ -1,0 +1,17 @@
+arm_variant_type: # [aarch64]
+  - sbsa          # [aarch64]
+
+# Use compatible CUDA versions; see ".ci_support" for more details
+cuda_compiler_version:
+  - 12.9
+  - 13.0
+
+# Use compatible libcublas versions for each CUDA version
+libcublas:
+  - 12
+  - 13
+
+zip_keys:
+  -
+    - cuda_compiler_version
+    - libcublas

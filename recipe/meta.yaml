@@ -25,12 +25,12 @@ source:
   # Delegate git-clone from test scripts to the recipe
   - git_url: https://github.com/NVIDIA/CUDALibrarySamples.git
     # Update the commit hash on version bump
-    git_rev: 6a52c1608812ac1177efd2a4774b5a0a27f32c5e
+    git_rev: 241afd3c7a8d1d756100139a3f629df5475fcf5c
     folder: sample_linux
 
 build:
   number: 0
-  skip: true  # [cuda_compiler_version in (undefined, "None")]
+  skip: true  # [osx or cuda_compiler_version in (undefined, "None")]
   run_exports:
     - {{ pin_subpackage('cutensor') }}
   ignore_run_exports_from:
@@ -49,6 +49,8 @@ requirements:
     - {{ compiler('cuda') }}
     - arm-variant * {{ arm_variant_type }}  # [aarch64]
     - cf-nvidia-tools 1                     # [linux]
+    - msys2-git                             # [win]
+    - git                                   # [not win]
   host:
     - cuda-version {{ cuda_compiler_version }}
     - libcublas {{ libcublas }}
@@ -59,6 +61,8 @@ requirements:
     - arm-variant * {{ arm_variant_type }}  # [aarch64]
 
 test:
+  source_files:
+    - sample_linux/
   requires:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
@@ -74,6 +78,7 @@ about:
   license: LicenseRef-cuTENSOR-Software-License-Agreement
   license_url: https://docs.nvidia.com/cuda/cutensor/license.html
   license_file: LICENSE
+  license_family: Other
   summary: Tensor Linear Algebra on NVIDIA GPUs
   description: |
     The cuTENSOR Library is a first-of-its-kind GPU-accelerated tensor linear
@@ -81,17 +86,12 @@ about:
     operations. cuTENSOR is used to accelerate applications in the areas of
     deep learning training and inference, computer vision, quantum chemistry
     and computational physics.
-
-    License Agreements:- The packages are governed by the NVIDIA cuTENSOR
-    Software License Agreement (EULA). By downloading and using the packages,
-    you accept the terms and conditions of the NVIDIA cuTENSOR EULA -
-    https://docs.nvidia.com/cuda/cutensor/license.html
   doc_url: https://docs.nvidia.com/cuda/cutensor/index.html
   dev_url: https://developer.nvidia.com/cutensor/downloads
 
 extra:
   skip-lints:
-    - license_file_overspecified
+    - deprecate_license_url
   recipe-maintainers:
     - ChrisPsa
     - b-kloss

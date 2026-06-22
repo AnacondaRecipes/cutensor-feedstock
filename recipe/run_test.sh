@@ -16,7 +16,6 @@ LD_PRELOAD="$CUDA_STUB" ./test_load_elf $PREFIX/lib/libcutensorMg.so
 
 NVCC_FLAGS=""
 
-git clone https://github.com/NVIDIA/CUDALibrarySamples.git sample_linux/
 cd sample_linux/cuTENSOR/
 error_log=$(nvcc $NVCC_FLAGS --std=c++17 -I$PREFIX/include -L$PREFIX/lib -lcutensor -lcudart contraction.cu -o contraction 2>&1)
 echo $error_log
