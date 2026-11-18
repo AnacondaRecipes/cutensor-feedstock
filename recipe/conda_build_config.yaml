@@ -1,12 +1,14 @@
 arm_variant_type: # [aarch64]
   - sbsa          # [aarch64]
 
-# Use compatible CUDA versions; see ".ci_support" for more details
+# Anaconda: build against the aggregate CBC CUDA versions (12.9 + 13.0) instead of
+# the conda-forge pinning (12.9 + 13.4); the _cuda13 redist payload is identical.
+# See ".ci_support" for more details.
 cuda_compiler_version:
   - 12.9
   - 13.0
 
-# Use compatible libcublas versions for each CUDA version
+# Anaconda: pin libcublas per CUDA major because the aggregate CBC has no libcublas pin
 libcublas:
   - 12
   - 13
