@@ -31,7 +31,8 @@ source:
 
 build:
   number: 0
-  skip: true  # [osx or cuda_compiler_version in (undefined, "None")]
+  # Anaconda: NVIDIA publishes no windows-arm64 cuTENSOR redist, so the variant cannot be built
+  skip: true  # [osx or (win and arm64) or cuda_compiler_version in (undefined, "None")]
   run_exports:
     - {{ pin_subpackage('cutensor') }}
   ignore_run_exports_from:
