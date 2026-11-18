@@ -40,6 +40,9 @@ build:
   missing_dso_whitelist:
     - "*/libcuda.so.*"    # [linux]
     - "*/nvcuda.dll"      # [win]
+    # Anaconda: cutensorMg.dll imports cuTENSOR.dll, but the redist ships cutensor.dll
+    # in this same package; Windows loads DLLs case-insensitively, conda-build does not.
+    - "*/cuTENSOR.dll"    # [win]
   script_env:
     - cuda_major={{ cuda_major }}
 
@@ -56,12 +59,16 @@ requirements:
   host:
     - cuda-version {{ cuda_compiler_version }}
     - libcublas {{ libcublas }}
+    # Anaconda: libcutensorMp NEEDs libcudart.so.<major>; libcublas does not pull it in
+    - cuda-cudart {{ cuda_compiler_version }}  # [linux]
     # Anaconda: pin nccl to the aggregate CBC major (libcutensorMp needs libnccl.so.2)
     - nccl {{ nccl }}  # [linux]
   run:
     - {{ pin_compatible("cuda-version", min_pin="x", max_pin="x") }}
-    - libcublas {{ libcublas }}
-    - nccl {{ nccl }}  # [linux]
+    # Anaconda: libcublas has no run_exports; guard against older minor ABIs
+    - {{ pin_compatible("libcublas", min_pin="x.y", max_pin="x") }}
+    - cuda-cudart  # [linux]
+    - nccl  # [linux]
   run_constrained:
     - arm-variant * {{ arm_variant_type }}  # [aarch64]
 
