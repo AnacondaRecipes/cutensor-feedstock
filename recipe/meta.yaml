@@ -74,7 +74,11 @@ requirements:
 
 test:
   source_files:
-    - sample_linux/
+    - sample_linux/cuTENSOR/contraction.cu
+    - sample_linux/cuTENSOR/reduction.cu
+    - sample_linux/cuTENSOR/utils.cuh
+    - sample_linux/cuTENSORMg/contraction_multi_gpu.cu
+    - sample_linux/cuTENSORMp/cutensorMp_contraction.cu
   requires:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
