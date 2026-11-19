@@ -1,6 +1,7 @@
-{% set version = "2.7.0.5" %}
+{% set version = "2.8.1.0" %}
 
-{% set cuda_major = cuda_compiler_version.split(".")[0]|int %}
+{% set cuda_major = "12" %}  # [(cuda_compiler_version or "").startswith("12")]
+{% set cuda_major = "13" %}  # [(cuda_compiler_version or "").startswith("13")]
 
 {% set platform = "linux-x86_64" %}  # [linux64]
 {% set platform = "linux-sbsa" %}  # [aarch64]
@@ -8,12 +9,12 @@
 {% set extension = "tar.xz" %}  # [not win]
 {% set extension = "zip" %}  # [win]
 
-{% set sha = "1540c437f4e18327731145e952daad24041be5bd7152bfef6c7c93cf8d69e7ed" %}  # [linux64 and (cuda_compiler_version or "").startswith("12")]
-{% set sha = "056eb7234e6f79e7424bb14eb7333325ed6e294cc1128698c7030a6979835908" %}  # [aarch64 and (cuda_compiler_version or "").startswith("12")]
-{% set sha = "4dad09693f978ae15927d395eb228e288fa59732597f7c42f8a44321bcf71cc7" %}  # [win64 and (cuda_compiler_version or "").startswith("12")]
-{% set sha = "8f15c8094075bda122d41e0d1e7a53d73fc9555524862d171046178a24340cd4" %}  # [linux64 and (cuda_compiler_version or "").startswith("13")]
-{% set sha = "d81acd749552214ebaef3606bdd41f7c373b8c3ff9524cc7050a728372777952" %}  # [aarch64 and (cuda_compiler_version or "").startswith("13")]
-{% set sha = "84549d31acb88cdee1c3f307e662285fafa4e5ab0cbcf2d29bf8587d9f9a301f" %}  # [win64 and (cuda_compiler_version or "").startswith("13")]
+{% set sha = "46dd5562fd7cc27fe89d07fd95ca006891680e835a6a30ea60579fb01f274690" %}  # [linux64 and (cuda_compiler_version or "").startswith("12")]
+{% set sha = "d2f2237b8e9db63189de6862b47f93f4ae76954033de81bcc8f67ea80c022e94" %}  # [aarch64 and (cuda_compiler_version or "").startswith("12")]
+{% set sha = "62473d196a523887804d0e9b1fdc5adf3d31b32dc3d9416e0bb5420f60f3ace6" %}  # [win64 and (cuda_compiler_version or "").startswith("12")]
+{% set sha = "03051950d98911ce21d977fd7ef697b6ff963b885df8844a326e25b9d400ae7a" %}  # [linux64 and (cuda_compiler_version or "").startswith("13")]
+{% set sha = "55e85748c2046e06838a125bd9b311339752afd0dfb73906e34f12397aceb475" %}  # [aarch64 and (cuda_compiler_version or "").startswith("13")]
+{% set sha = "802f3b5dedc8f1d3e0eaa83e07d5ebdc0b93e8bc4a230a94a3bb124523f8b170" %}  # [win64 and (cuda_compiler_version or "").startswith("13")]
 
 package:
   name: cutensor
@@ -21,16 +22,17 @@ package:
 
 source:
   - url: https://developer.download.nvidia.com/compute/cutensor/redist/libcutensor/{{ platform }}/libcutensor-{{ platform }}-{{ version }}_cuda{{ cuda_major }}-archive.{{ extension }}
-    sha256: {{ sha|default("") }}
-  # Delegate git-clone from test scripts to the recipe
+    sha256: {{ sha }}
+  # Anaconda: delegate the git-clone of the samples from the test scripts to the recipe
   - git_url: https://github.com/NVIDIA/CUDALibrarySamples.git
     # Update the commit hash on version bump
-    git_rev: 241afd3c7a8d1d756100139a3f629df5475fcf5c
+    git_rev: 7026b8c29b8aec0f1c5200a20d9f7edbac6383ec
     folder: sample_linux
 
 build:
   number: 0
-  skip: true  # [osx or cuda_compiler_version in (undefined, "None")]
+  # Anaconda: NVIDIA publishes no windows-arm64 cuTENSOR redist, so the variant cannot be built
+  skip: true  # [osx or (win and arm64) or cuda_compiler_version in (undefined, "None")]
   run_exports:
     - {{ pin_subpackage('cutensor') }}
   ignore_run_exports_from:
@@ -38,6 +40,9 @@ build:
   missing_dso_whitelist:
     - "*/libcuda.so.*"    # [linux]
     - "*/nvcuda.dll"      # [win]
+    # Anaconda: cutensorMg.dll imports cuTENSOR.dll, but the redist ships cutensor.dll
+    # in this same package; Windows loads DLLs case-insensitively, conda-build does not.
+    - "*/cuTENSOR.dll"    # [win]
   script_env:
     - cuda_major={{ cuda_major }}
 
@@ -49,20 +54,31 @@ requirements:
     - {{ compiler('cuda') }}
     - arm-variant * {{ arm_variant_type }}  # [aarch64]
     - cf-nvidia-tools 1                     # [linux]
-    - msys2-git                             # [win]
-    - git                                   # [not win]
+    # Anaconda: git is required to fetch the CUDALibrarySamples source at build time
+    - git
   host:
     - cuda-version {{ cuda_compiler_version }}
     - libcublas {{ libcublas }}
+    # Anaconda: libcutensorMp NEEDs libcudart.so.<major>; libcublas does not pull it in
+    - cuda-cudart {{ cuda_compiler_version }}  # [linux]
+    # Anaconda: pin nccl to the aggregate CBC major (libcutensorMp needs libnccl.so.2)
+    - nccl {{ nccl }}  # [linux]
   run:
     - {{ pin_compatible("cuda-version", min_pin="x", max_pin="x") }}
-    - libcublas {{ libcublas }}
+    # Anaconda: libcublas has no run_exports; guard against older minor ABIs
+    - {{ pin_compatible("libcublas", min_pin="x.y", max_pin="x") }}
+    - cuda-cudart  # [linux]
+    - nccl  # [linux]
   run_constrained:
     - arm-variant * {{ arm_variant_type }}  # [aarch64]
 
 test:
   source_files:
-    - sample_linux/
+    - sample_linux/cuTENSOR/contraction.cu
+    - sample_linux/cuTENSOR/reduction.cu
+    - sample_linux/cuTENSOR/utils.cuh
+    - sample_linux/cuTENSORMg/contraction_multi_gpu.cu
+    - sample_linux/cuTENSORMp/cutensorMp_contraction.cu
   requires:
     - {{ compiler('c') }}
     - {{ compiler('cxx') }}
@@ -70,6 +86,10 @@ test:
     - {{ stdlib('c') }}
     # need the libcuda stub for import test
     - cuda-driver-dev  # [linux]
+    # NVIDIA's cuTENSORMp sample includes cuda_profiler_api.h
+    - cuda-profiler-api  # [linux]
+    # NVIDIA's cuTENSORMp sample uses MPI to initialize the NCCL communicator
+    - openmpi  # [linux]
   files:
     - test_load_elf.c  # [linux]
 
@@ -83,9 +103,10 @@ about:
   description: |
     The cuTENSOR Library is a first-of-its-kind GPU-accelerated tensor linear
     algebra library providing tensor contraction, reduction and elementwise
-    operations. cuTENSOR is used to accelerate applications in the areas of
-    deep learning training and inference, computer vision, quantum chemistry
-    and computational physics.
+    operations. On Linux, the package also provides cuTENSORMp for distributed
+    tensor contractions across multiple processes. cuTENSOR is used to
+    accelerate applications in the areas of deep learning training and
+    inference, computer vision, quantum chemistry and computational physics.
   doc_url: https://docs.nvidia.com/cuda/cutensor/index.html
   dev_url: https://developer.nvidia.com/cutensor/downloads
 
